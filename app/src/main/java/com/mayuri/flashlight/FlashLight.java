@@ -13,21 +13,18 @@ import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
-import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.hardware.Camera;
 import android.hardware.Camera.Parameters;
+
 public class FlashLight extends AppCompatActivity {
-    private CameraManager objCameraManager;
+    private CameraManager cameraManager;
     private String mCameraId;
-    private ImageView ivOnOFF;
-    private MediaPlayer objMediaPlayer;
-    private Camera camera;
+    private ImageView torchOnOrOff;
+    private MediaPlayer mediaPlayer;
+    static Camera camera = null;
     private Parameters parameter;
-    /**
-     * for getting torch mode
-     */
     private Boolean isTorchOn;
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
@@ -35,7 +32,8 @@ public class FlashLight extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_flash_light);
-        ivOnOFF = (ImageView) findViewById(R.id.ivOnOFF);
+        getSupportActionBar().hide();
+        torchOnOrOff = (ImageView) findViewById(R.id.flash_light_on_off_imageview);
         isTorchOn = false;
 
         /**
@@ -43,28 +41,37 @@ public class FlashLight extends AppCompatActivity {
          */
         ifFlashLightIsAvailableOnDevice();
 
-
-        objCameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+        cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
             if ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1)
                     && ((Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP))) {
-                this.camera = Camera.open(0);
+                try {
+                    releaseCamera();
+                    if (mCameraId == "0") {
+                        camera = Camera.open(Camera.CameraInfo.CAMERA_FACING_FRONT);
+                    } else {
+                        camera = Camera.open(Camera.CameraInfo.CAMERA_FACING_BACK);
+                    }
+                } catch (Exception e) {
+                    Log.e(getString(R.string.app_name), "failed to open Camera");
+                    e.printStackTrace();
+                }
                 parameter = this.camera.getParameters();
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                mCameraId = objCameraManager.getCameraIdList()[0];
+                mCameraId = cameraManager.getCameraIdList()[0];
             }
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
 
-        ivOnOFF.setOnClickListener(new View.OnClickListener() {
+        torchOnOrOff.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1)
                         && ((Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP))) {
                     getActionsOnFlashLightForOlderVersion();
                 } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                   getActionsOnFlashLightForNewVersion();
+                    getActionsOnFlashLightForNewVersion();
                 }
             }
         });
@@ -90,54 +97,52 @@ public class FlashLight extends AppCompatActivity {
     public void getActionsOnFlashLightForNewVersion() {
         try {
             if (isTorchOn) {
-                turnOffLight();
+                turnOffTheFlashLightForNewVersion();
                 isTorchOn = false;
             } else {
-                turnOnLight();
+                turnOnTheFlashLightForNewVersion();
                 isTorchOn = true;
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
-public void getActionsOnFlashLightForOlderVersion(){
 
-    try {
-        if(!isTorchOn){
-            turnOnTheFlash();
-        }else{
-            turnOffTheFlash();
-        }
-    } catch (Exception e) {
-        e.printStackTrace();
-    }
-}
-    /**
-     * Method for turning light ON
-     */
-    public void turnOnLight() {
+    public void getActionsOnFlashLightForOlderVersion() {
 
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                objCameraManager.setTorchMode(mCameraId, true);
-                playOnOffSound();
-                ivOnOFF.setImageResource(R.drawable.on);
+            if (isTorchOn) {
+                turnOffTheFlashLightForOldVersion();
+                isTorchOn = false;
+            } else {
+                turnOnTheFlashLightForOldVersion();
+                isTorchOn = true;
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    /**
-     * Method for turning light OFF
-     */
-    public void turnOffLight() {
+    public void turnOnTheFlashLightForNewVersion() {
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                objCameraManager.setTorchMode(mCameraId, false);
+                cameraManager.setTorchMode(mCameraId, true);
                 playOnOffSound();
-                ivOnOFF.setImageResource(R.drawable.off);
+                torchOnOrOff.setImageResource(R.drawable.flash_light_on);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void turnOffTheFlashLightForNewVersion() {
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                cameraManager.setTorchMode(mCameraId, false);
+                playOnOffSound();
+                torchOnOrOff.setImageResource(R.drawable.flash_light_off);
 
             }
 
@@ -146,33 +151,65 @@ public void getActionsOnFlashLightForOlderVersion(){
         }
     }
 
-    private void playOnOffSound() {
-        objMediaPlayer = MediaPlayer.create(FlashLight.this, R.raw.flash_sound);
-        objMediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
 
-            @Override
-            public void onCompletion(MediaPlayer mp) {
-                mp.release();
-            }
-        });
-        objMediaPlayer.start();
-    }
-    private void turnOffTheFlash() {
+    private void turnOffTheFlashLightForOldVersion() {
         parameter.setFlashMode(Parameters.FLASH_MODE_OFF);
         this.camera.setParameters(parameter);
         this.camera.stopPreview();
-        isTorchOn = false;
-        ivOnOFF.setImageResource(R.drawable.on);
+        playOnOffSound();
+        torchOnOrOff.setImageResource(R.drawable.flash_light_off);
     }
 
-    private void turnOnTheFlash() {
-        if(this.camera != null){
+    private void turnOnTheFlashLightForOldVersion() {
+        if (this.camera != null) {
             parameter = this.camera.getParameters();
             parameter.setFlashMode(Parameters.FLASH_MODE_TORCH);
             this.camera.setParameters(parameter);
             this.camera.startPreview();
-            isTorchOn = true;
-            ivOnOFF.setImageResource(R.drawable.off);
+            playOnOffSound();
+            torchOnOrOff.setImageResource(R.drawable.flash_light_on);
+        }
+    }
+
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (isTorchOn) {
+            turnOffTheFlashLightForNewVersion();
+            turnOffTheFlashLightForOldVersion();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (isTorchOn) {
+            turnOffTheFlashLightForNewVersion();
+            turnOffTheFlashLightForOldVersion();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (isTorchOn) {
+            turnOnTheFlashLightForNewVersion();
+            turnOffTheFlashLightForOldVersion();
+        }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        getCamera();
+    }
+
+    private void releaseCamera() {
+
+        if (camera != null) {
+            camera.release();
+            camera = null;
         }
     }
 
@@ -186,35 +223,16 @@ public void getActionsOnFlashLightForOlderVersion(){
             }
         }
     }
-    @Override
-    protected void onStop() {
-        super.onStop();
-        if (isTorchOn) {
-            turnOffLight();
-            turnOffTheFlash();
-        }
-    }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        if (isTorchOn) {
-            turnOffLight();
-            turnOffTheFlash();
-        }
-    }
+    private void playOnOffSound() {
+        mediaPlayer = MediaPlayer.create(FlashLight.this, R.raw.flash_sound);
+        mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (isTorchOn) {
-            turnOnLight();
-            turnOffTheFlash();
-        }
-    }
-    @Override
-    protected void onStart() {
-        super.onStart();
-        getCamera();
+            @Override
+            public void onCompletion(MediaPlayer mp) {
+                mp.release();
+            }
+        });
+        mediaPlayer.start();
     }
 }
