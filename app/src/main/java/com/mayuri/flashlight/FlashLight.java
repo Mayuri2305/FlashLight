@@ -13,15 +13,19 @@ import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.SwitchCompat;
 import android.util.Log;
 import android.view.View;
+import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.hardware.Camera.Parameters;
+import android.widget.Switch;
 
 public class FlashLight extends AppCompatActivity {
+    public static final String TAG = "Flash";
     private CameraManager cameraManager;
     private String mCameraId;
-    private ImageView torchOnOrOff;
+    private SwitchCompat torchOnOrOff;
     private MediaPlayer mediaPlayer;
     static Camera camera = null;
     private Parameters parameter;
@@ -33,7 +37,7 @@ public class FlashLight extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_flash_light);
         getSupportActionBar().hide();
-        torchOnOrOff = (ImageView) findViewById(R.id.flash_light_on_off_imageview);
+        torchOnOrOff = (SwitchCompat) findViewById(R.id.flash_light_on_off_switch);
         isTorchOn = false;
 
         /**
@@ -64,15 +68,33 @@ public class FlashLight extends AppCompatActivity {
             e.printStackTrace();
         }
 
-        torchOnOrOff.setOnClickListener(new View.OnClickListener() {
+        getSwitchOnOrOff();
+    }
+
+    public void getSwitchOnOrOff() {
+        torchOnOrOff.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
-            public void onClick(View v) {
-                if ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1)
-                        && ((Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP))) {
-                    getActionsOnFlashLightForOlderVersion();
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    getActionsOnFlashLightForNewVersion();
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    if ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1)
+                            && ((Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP))) {
+                        turnOnTheFlashLightForOldVersion();
+                        isTorchOn = true;
+                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        turnOnTheFlashLightForNewVersion();
+                        isTorchOn = true;
+                    }
+                } else {
+                    if ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1)
+                            && ((Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP))) {
+                        turnOffTheFlashLightForOldVersion();
+                        isTorchOn = false;
+                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        turnOffTheFlashLightForNewVersion();
+                        isTorchOn = false;
+                    }
                 }
+
             }
         });
     }
@@ -94,34 +116,6 @@ public class FlashLight extends AppCompatActivity {
         }
     }
 
-    public void getActionsOnFlashLightForNewVersion() {
-        try {
-            if (isTorchOn) {
-                turnOffTheFlashLightForNewVersion();
-                isTorchOn = false;
-            } else {
-                turnOnTheFlashLightForNewVersion();
-                isTorchOn = true;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void getActionsOnFlashLightForOlderVersion() {
-
-        try {
-            if (isTorchOn) {
-                turnOffTheFlashLightForOldVersion();
-                isTorchOn = false;
-            } else {
-                turnOnTheFlashLightForOldVersion();
-                isTorchOn = true;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
 
     public void turnOnTheFlashLightForNewVersion() {
 
@@ -129,7 +123,7 @@ public class FlashLight extends AppCompatActivity {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 cameraManager.setTorchMode(mCameraId, true);
                 playOnOffSound();
-                torchOnOrOff.setImageResource(R.drawable.flash_light_on);
+                //torchOnOrOff.setImageResource(R.drawable.flash_light_on);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -142,7 +136,7 @@ public class FlashLight extends AppCompatActivity {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 cameraManager.setTorchMode(mCameraId, false);
                 playOnOffSound();
-                torchOnOrOff.setImageResource(R.drawable.flash_light_off);
+                //torchOnOrOff.setImageResource(R.drawable.flash_light_off);
 
             }
 
@@ -157,7 +151,7 @@ public class FlashLight extends AppCompatActivity {
         this.camera.setParameters(parameter);
         this.camera.stopPreview();
         playOnOffSound();
-        torchOnOrOff.setImageResource(R.drawable.flash_light_off);
+        //torchOnOrOff.setImageResource(R.drawable.flash_light_off);
     }
 
     private void turnOnTheFlashLightForOldVersion() {
@@ -167,7 +161,7 @@ public class FlashLight extends AppCompatActivity {
             this.camera.setParameters(parameter);
             this.camera.startPreview();
             playOnOffSound();
-            torchOnOrOff.setImageResource(R.drawable.flash_light_on);
+            // torchOnOrOff.setImageResource(R.drawable.flash_light_on);
         }
     }
 
